@@ -11,22 +11,27 @@ The activity data
 
 
 ## Loading the Data
-Data is loaded with the "read.csv" command, with the following code:
+Data is loaded with the "read.csv" command. Then, rows with NA's are removed with the following code:
 
 ```{r}
+    library("dplyr")
     activity_data <- read.csv('repdata-data-activity/activity.csv')
+    activity_data <- activity_data[complete.cases(activity_data),]
 ```
 
 ## What is mean total number of steps taken per day?
 
 ```{r}
-    mean(activity_data$steps, na.rm = TRUE)
+    by_day <- group_by(activity_data, date)
+    total_by_day <- summarise(by_day, steps = sum(steps))
+    
 ```
 
 You can also embed plots, for example:
 
 ```{r, echo=FALSE}
-plot(cars)
+    hist(activity_data$steps, xaxt="n")
+    axis(1, at=1:nrow(activity_data), labels=activity_data$date)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
