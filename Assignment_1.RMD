@@ -7,31 +7,209 @@ output: html_document
 
 # Introduction
 
-The activity data
+The activity data was measured with a personal activity
+monitoring device. This device obtains data every 5 
+minutes during the day. The dataset consists of two 
+months of data for the months of October and November
+of 2012 and measures the number of steps taken by the
+individual at intervals of 5 minutes for each day.
+
+## Data
+The [personal activity dataset](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) (52K) can be found 
+at the following link:
+https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip
+
+Data consists of 3 variables:
+
+- **steps**: the number of steps taken in a 5-minute interval
+- **date**: the date in which the measurement was taken in the 
+  YYYY-MM-DD format
+- **interval**: the 5-minute interval id for the measurement
+
+This dataset is formated in a comma-separated-value (CSV) 
+file. It contains a total of 17,568 observations
 
 
 ## Loading the Data
-Data is loaded with the "read.csv" command. Then, rows with NA's are removed with the following code:
+Data is loaded with the "read.csv" command. Then, rows with
+NA's are removed as part of the pre-processing step.
 
-```{r}
+
+```{r, echo=TRUE, message=FALSE}
     library("dplyr")
-    activity_data <- read.csv('repdata-data-activity/activity.csv')
-    activity_data <- activity_data[complete.cases(activity_data),]
+    activity_data_orig <- read.csv('repdata-data-activity/activity.csv')
+    activity_data <- activity_data_orig[complete.cases(activity_data_orig),]
 ```
 
 ## What is mean total number of steps taken per day?
 
-```{r}
+First we compute the total number of steps taken per day 
+is with the following code and stored in variable **total_by_day**:
+
+```{r, echo=TRUE}
     by_day <- group_by(activity_data, date)
     total_by_day <- summarise(by_day, steps = sum(steps))
+```
+
+The histogram for the total steps per day is:
+
+```{r, echo=TRUE, message=FALSE,results='hide'}
+    jpeg(file="figure/plot1.jpg")
+    m <- barplot(total_by_day$steps, xlab="Date", ylab="Steps")
+    axis(1, at=m, labels=total_by_day$date)
+    dev.off()
+    m <- barplot(total_by_day$steps, xlab="Date", ylab="Steps")
+    axis(1, at=m, labels=total_by_day$date)
+```
+
+
+
+```{r, echo=TRUE}
+    mymean <- mean(total_by_day$steps)
+    mymedian <- median(total_by_day$steps)
+
+```
+
+The mean and median of the total number of steps taken per 
+day are **`r format(round(mymean,4),nsmall=4) `** and 
+**`r format(round(mymedian,4),nsmall=4) `** respectively.
+
+
+
+##What is the average daily activity pattern?
+
+We created a time series plot of the 5-minute interval and
+the average number of steps taken, averaged across all days.
+
+```{r, echo=TRUE, results='hide'}
+    activity_data$newinterval <- rep(seq(1:288),53)
+    by_interval <- group_by(activity_data, newinterval)
+    total_by_interval <- summarise(by_interval, steps = mean(steps))
+    jpeg(file="figure/plot2.jpg")
+    plot(total_by_interval, type="l", xlab="Interval", ylab="Steps", main="Average of Steps by Interval")
+    dev.off()
+
+    plot(total_by_interval, type="l", xlab="Interval", ylab="Steps", main="Average of Steps by Interval")
+```
+
+
+###Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+The 5-minute interval, on average across all the days in 
+the dataset, that contains the maximum number of steps is
+interval number **`r total_by_interval[total_by_interval$steps>= max(total_by_interval$steps),]$newinterval`** with an average of steps of **`r format(round(max(total_by_interval$steps),0),nsmall=0)`**.
+
+
+
+##Imputing missing values
+
+The total number of missing values in the dataset is: **`r nrow(activity_data_orig[is.na(activity_data_orig$steps),]) + nrow(activity_data_orig[is.na(activity_data_orig$interval),])+ nrow(activity_data_orig[is.na(activity_data_orig$date),])`**.
+
+**The strategy used to fill missing values for the "steps" variable is to use the mean value for all days**.
+
+A new dataset that is equal to the original dataset but 
+with the missing data filled in using the abovementioned 
+strategy was created with the following code. The new 
+dataset was stored in variable **activity_data_orig** as 
+follows:
+
+```{r, echo=TRUE}
+    by_day_orig <- group_by(activity_data_orig, date)
+    average_steps_by_day_orig <- summarise(by_day_orig, steps = mean(steps,na.rm=TRUE))
+    new_value <- mean(average_steps_by_day_orig$steps, na.rm=TRUE)
+    activity_data_orig$steps[is.na(activity_data_orig$steps)] <-
+      new_value
+```
+
+The new histogram for the total steps per day when replacing 
+missing values by the mean of the values for all days is:
+
+```{r, echo=TRUE, results='hide'}
+    by_day2 <- group_by(activity_data_orig, date)
+    total_by_day2 <- summarise(by_day2, steps = sum(steps))
+    jpeg(file="figure/plot3.jpg")
+    m <- barplot(total_by_day2$steps)
+    axis(1, at=m, labels=total_by_day2$date)
+    dev.off()
+    m <- barplot(total_by_day2$steps)
+    axis(1, at=m, labels=total_by_day2$date)
+```
+
+
+```{r, echo=TRUE}
+    mymean <- mean(total_by_day2$steps)
+    mymedian <- median(total_by_day2$steps)
+
+```
+
+The mean and median of the total number of steps taken 
+per day when replacing missing values by the mean of 
+steps for all days are **`r format(round(mymean,4),nsmall=4) `** 
+and **`r format(round(mymedian,4),nsmall=4) `** respectively.
+
+In this case, replacing missing values for the steps 
+attribute with the mean of steps for all days **changed the value of the median steps per day**.
+
+I think that the impact of introducing missing values to 
+the estimates of the total number of daily steps 
+**could bias our results**. In my case, for the first part 
+of this assignment, I removed rows with missing values and 
+I did not see a high impact because the mean value of the 
+total number of steps taken per day **did not change*. On 
+the other hand, the median value changed slightly from the 
+value of the mean. Of course this result is biased because 
+of the way in which I replaced missing values.
+
+##Are there differences in activity patterns between weekdays and weekends?
+
+In order to verify whether there are differences in 
+activity patterns between weekdays and weekends we present
+a plot for the average interval steps for weekdays and 
+other for weekends. We then are able to compare the patterns:
+
+```{r, echo=TRUE,results='hide'}
+    activity_data_orig$weekday <- weekdays(as.Date(activity_data_orig$date))
+    activity_data_orig$weekday[activity_data_orig$weekday=="domingo"] <- "weekend"
+    activity_data_orig$weekday[activity_data_orig$weekday=="sábado"] <- "weekend"
+    activity_data_orig$weekday[activity_data_orig$weekday!="weekend"] <- "weekday"
+
+    activity_data_orig$newinterval <- rep(seq(1:288),61)
+    by_interval2 <- group_by(activity_data_orig, newinterval,weekday)
+    total_by_interval2 <- summarise(by_interval2, steps = mean(steps))
+    week_day <- total_by_interval2[total_by_interval2$weekday=="weekday",]$steps
+    week_end <- total_by_interval2[total_by_interval2$weekday=="weekend",]$steps
     
+    jpeg(file="figure/plot4.jpg")
+    par(mfrow=c(2,1))
+    par(mar=c(3,3,2,1))
+    plot(week_day, type="l", col="blue", main="Weekday",xlab="Interval")
+    mtext("Interval", side=1)
+    mtext("Steps", side=4)
+
+    plot(week_end, type="l", col="blue", main="Weekend",xlab="interval")
+    mtext("Interval", side=1)
+    mtext("Steps", side=4)
+    dev.off()
+
+    par(mfrow=c(2,1))
+    par(mar=c(3,3,2,1))
+    plot(week_day, type="l", col="blue", main="Weekday",xlab="Interval")
+    mtext("Interval", side=1)
+    mtext("Steps", side=4)
+
+    plot(week_end, type="l", col="blue", main="Weekend",xlab="interval")
+    mtext("Interval", side=1)
+    mtext("Steps", side=4)
+
 ```
 
-You can also embed plots, for example:
+From these plots we can see the following differences
+between the patterns of weekdays vs weekends:
 
-```{r, echo=FALSE}
-    hist(activity_data$steps, xaxt="n")
-    axis(1, at=1:nrow(activity_data), labels=activity_data$date)
-```
+- The pattern for the first 65 intervals **is similar**.
+- The pattern from interval 66 to interval 95 **is higher for weekdays**.
+- The pattern from interval 115 to interval 250 **tends to be higher for weekends**.
+- The pattern from interval 251 to interval 288 **is similar**.
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
